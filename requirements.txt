@@ -4,4 +4,4 @@ transformers==4.38.0
 numpy>=1.17
 pyyaml>=6.0
 packaging>=25.0
-tokenizers==0.19.1
+
