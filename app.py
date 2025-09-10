@@ -1,38 +1,77 @@
-
 import os
-from fastapi import FastAPI
-from pydantic import BaseModel
+import zipfile
+import requests
+from flask import Flask, request, jsonify
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import gdown
 
-app = FastAPI()
+app = Flask(__name__)
 
-# ---------- CONFIGURACIÓ MODEL ----------
-MODEL_ID = "TU_ID_DEL_MODEL"  # Substitueix amb l'ID del fitxer a Google Drive
-MODEL_PATH = "models/gpt2-117M"
+# --------------------------
+# Configuració del model
+# --------------------------
+DRIVE_LINK = os.getenv("MODEL_DRIVE_LINK", "https://drive.google.com/uc?export=download&id=1NKLojHuwv3VKvjO_dSwkujMBrI_kjeGH")
+MODEL_PATH = "gpt2-spanish"
+CORP_NAME = os.getenv("CORPORATION_NAME", "ArCom Corporation")
 
-# ---------- DESCARREGA MODEL SI NO EXISTEIX ----------
-if not os.path.exists(MODEL_PATH):
-    os.makedirs(MODEL_PATH)
-    url = f"https://drive.google.com/uc?id={MODEL_ID}"
-    zip_file = os.path.join(MODEL_PATH, "gpt2-117M.zip")
-    print("Descarregant model des de Google Drive...")
-    gdown.download(url, zip_file, quiet=False)
-    os.system(f"unzip {zip_file} -d {MODEL_PATH}")
+# --------------------------
+# Funció per descarregar i descomprimir
+# --------------------------
+def download_and_extract_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Descarregant el model del Drive...")
+        r = requests.get(DRIVE_LINK, stream=True)
+        zip_file = "gpt2-spanish.zip"
+        with open(zip_file, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Descomprimit...")
+        with zipfile.ZipFile(zip_file, "r") as zip_ref:
+            zip_ref.extractall(MODEL_PATH)
+        print("Model llest!")
 
-# ---------- CARREGAR MODEL ----------
-tokenizer = GPT2Tokenizer.from_pretrained(MODEL_PATH)
-model = GPT2LMHeadModel.from_pretrained(MODEL_PATH)
+# --------------------------
+# Inicialitzar model
+# --------------------------
+download_and_extract_model()
 
-# ---------- DEFINIR L’ESQUEMA DE PREGUNTA ----------
-class Question(BaseModel):
-    text: str
+print("Carregant tokenizer i model...")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+print(f"{CORP_NAME} AI Ready!")
 
-# ---------- ENDPOINT API ----------
-@app.post("/ask")
-def ask(q: Question):
-    inputs = tokenizer.encode(q.text, return_tensors="pt")
-    outputs = model.generate(inputs, max_length=100, do_sample=True)
+# --------------------------
+# Endpoint principal
+# --------------------------
+@app.route("/ask", methods=["POST"])
+def ask():
+    data = request.get_json()
+    question = data.get("question", "")
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+
+    inputs = tokenizer.encode(question, return_tensors="pt").to(device)
+    outputs = model.generate(inputs, max_length=200, pad_token_id=tokenizer.eos_token_id)
     answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return {"answer": answer}
+
+    return jsonify({
+        "corporation": CORP_NAME,
+        "question": question,
+        "answer": answer
+    })
+
+# --------------------------
+# Ruta de test
+# --------------------------
+@app.route("/", methods=["GET"])
+def index():
+    return f"Benvingut a l'assistent d'IA de {CORP_NAME}!"
+
+# --------------------------
+# Iniciar Flask
+# --------------------------
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
