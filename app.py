@@ -5,73 +5,65 @@ from flask import Flask, request, jsonify
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
-app = Flask(__name__)
+# ---------------------------
+# CONFIGURACIÓ
+# ---------------------------
+MODEL_DRIVE_ID = "1NKLojHuwv3VKvjO_dSwkujMBrI_kjeGH"
+MODEL_URL = f"https://drive.google.com/uc?export=download&id={MODEL_DRIVE_ID}"
+MODEL_ZIP_PATH = "gpt2-spanish.zip"
+MODEL_DIR = "gpt2-spanish"
 
-# --------------------------
-# Configuració del model
-# --------------------------
-DRIVE_LINK = os.getenv("MODEL_DRIVE_LINK", "https://drive.google.com/uc?export=download&id=1NKLojHuwv3VKvjO_dSwkujMBrI_kjeGH")
-MODEL_PATH = "gpt2-spanish"
-CORP_NAME = os.getenv("CORPORATION_NAME", "ArCom Corporation")
-
-# --------------------------
-# Funció per descarregar i descomprimir
-# --------------------------
+# ---------------------------
+# FUNCIONS
+# ---------------------------
 def download_and_extract_model():
-    if not os.path.exists(MODEL_PATH):
+    """Descarrega el model del Drive i el descomprimeix si cal."""
+    if not os.path.exists(MODEL_DIR):
         print("Descarregant el model del Drive...")
-        r = requests.get(DRIVE_LINK, stream=True)
-        zip_file = "gpt2-spanish.zip"
-        with open(zip_file, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
+        response = requests.get(MODEL_URL, stream=True)
+        with open(MODEL_ZIP_PATH, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
         print("Descomprimit...")
-        with zipfile.ZipFile(zip_file, "r") as zip_ref:
-            zip_ref.extractall(MODEL_PATH)
+        with zipfile.ZipFile(MODEL_ZIP_PATH, "r") as zip_ref:
+            zip_ref.extractall(MODEL_DIR)
         print("Model llest!")
 
-# --------------------------
-# Inicialitzar model
-# --------------------------
+# ---------------------------
+# INICIALITZACIÓ
+# ---------------------------
 download_and_extract_model()
 
 print("Carregant tokenizer i model...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
+model = AutoModelForCausalLM.from_pretrained(MODEL_DIR)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 model.to(device)
-print(f"{CORP_NAME} AI Ready!")
+print("Model carregat!")
 
-# --------------------------
-# Endpoint principal
-# --------------------------
+# ---------------------------
+# FLASK APP
+# ---------------------------
+app = Flask(__name__)
+
 @app.route("/ask", methods=["POST"])
 def ask():
-    data = request.get_json()
+    """Endpoint per fer preguntes al model."""
+    data = request.json
     question = data.get("question", "")
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
-    inputs = tokenizer.encode(question, return_tensors="pt").to(device)
-    outputs = model.generate(inputs, max_length=200, pad_token_id=tokenizer.eos_token_id)
+    inputs = tokenizer(question, return_tensors="pt").to(device)
+    outputs = model.generate(**inputs, max_new_tokens=100, pad_token_id=tokenizer.eos_token_id)
     answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    return jsonify({
-        "corporation": CORP_NAME,
-        "question": question,
-        "answer": answer
-    })
+    return jsonify({"question": question, "answer": answer})
 
-# --------------------------
-# Ruta de test
-# --------------------------
-@app.route("/", methods=["GET"])
-def index():
-    return f"Benvingut a l'assistent d'IA de {CORP_NAME}!"
+@app.route("/healthz", methods=["GET"])
+def health():
+    return "OK", 200
 
-# --------------------------
-# Iniciar Flask
-# --------------------------
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
