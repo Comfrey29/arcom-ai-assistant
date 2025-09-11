@@ -1,7 +1,5 @@
-flask==2.3.3
-torch==2.8.0
-transformers==4.38.0
-numpy>=1.17
-pyyaml>=6.0
-packaging>=25.0
-
+flask
+gunicorn
+transformers
+torch
+gradio
