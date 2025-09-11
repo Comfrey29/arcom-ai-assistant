@@ -1,43 +1,47 @@
 import os
-from flask import Flask, request, render_template
+from flask import Flask, request, jsonify, render_template
 from transformers import pipeline, set_seed
 
-# Inicialització Flask
 app = Flask(__name__)
 
-# Llegim variables d'entorn
+# Configuració Hugging Face
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-HF_MODEL = os.getenv("HF_MODEL", "gpt2")  # Si no hi ha, agafa gpt2 per defecte
+HF_MODEL = "gpt2"  # Pots posar qualsevol model de Hugging Face
 
-# Inicialitzem el model Hugging Face amb token
-try:
-    generator = pipeline(
-        "text-generation",
-        model=HF_MODEL,
-        device=-1,  # CPU
-        use_auth_token=HF_API_TOKEN
-    )
-except Exception as e:
-    print("[ERROR] No s'ha pogut carregar el model:", e)
-    generator = None
+# Inicialitzem generator com a None; el carregarem sota demanda
+generator = None
+
+def load_model():
+    global generator
+    if generator is None:
+        generator = pipeline(
+            "text-generation",
+            model=HF_MODEL,
+            use_auth_token=HF_API_TOKEN,
+            device=-1  # CPU, important per tenir poca RAM
+        )
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    output = ""
     if request.method == "POST":
-        prompt = request.form.get("prompt", "")
-        if generator:
+        data = request.get_json()
+        prompt = data.get("prompt", "")
+        output = "[ERROR] Model no carregat"
+
+        if prompt:
             try:
-                set_seed(42)  # opcional: per reproduïbilitat
+                load_model()  # Carreguem el model només aquí
+                set_seed(42)
                 result = generator(prompt, max_length=100, do_sample=True)
                 output = result[0]["generated_text"]
             except Exception as e:
                 output = f"[ERROR] {e}"
-        else:
-            output = "[ERROR] Model no carregat"
-    return render_template("index.html", output=output)
+        return jsonify({"output": output})
+
+    # GET: retornem la pàgina HTML
+    return render_template("index.html")
 
 if __name__ == "__main__":
-    # Port 10000 per defecte, Render usarà PORT a l'entorn
-    port = int(os.getenv("PORT", 10000))
+    # Port i host per Render
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
