@@ -1,11 +1,22 @@
 async function askQuestion() {
     const question = document.getElementById("question").value;
-    const response = await fetch("/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: question })
-    });
-    const data = await response.json();
-    document.getElementById("answer").innerText = data.answer;
-}
+    const answerEl = document.getElementById("answer");
 
+    // Mostrem que està carregant
+    answerEl.textContent = "Pensant...";
+
+    try {
+        const response = await fetch("/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ prompt: question })
+        });
+
+        const data = await response.json();
+        answerEl.textContent = data.output || "[ERROR]";
+    } catch (err) {
+        answerEl.textContent = "[ERROR] " + err.message;
+    }
+}
