@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: my-ai-web
+    env: python
+    branch: main          # Canvia-ho si tens una altra branca
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 60
+    autoDeploy: true
+    plan: free             # o el que vulguis
