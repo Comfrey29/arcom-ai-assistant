@@ -1,5 +1,5 @@
 flask
 gunicorn
 transformers
-torch
+torch==2.8.0+cpu
 gradio
