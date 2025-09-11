@@ -1,55 +1,57 @@
-# app.py
 from flask import Flask, request, jsonify
-from transformers import pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
 app = Flask(__name__)
 
-# --------------------------
-# CONFIGURACIÓ DEL MODEL
-# --------------------------
-MODEL_NAME = "gpt2"  # Pots canviar a "distilgpt2" per menys pes
-MAX_LENGTH = 100      # Nombre màxim de tokens generats
-TEMPERATURE = 0.7     # Aleatorietat de la generació
-TOP_K = 50            # Top-k sampling
-TOP_P = 0.95          # Top-p sampling
+# --- CONFIGURACIÓ DEL MODEL ---
+MODEL_NAME = "distilgpt2"  # més lleuger que gpt2, ideal per 512MB
+MAX_LENGTH = 100            # longitud màxima de la resposta
+TEMPERATURE = 0.7           # controla la creativitat
 
-# Pipeline de generació
-generator = pipeline(
-    "text-generation",
-    model=MODEL_NAME,
-)
+# Carreguem model i tokenizer una sola vegada
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 
-# --------------------------
-# ENDPOINTS
-# --------------------------
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+# Historial curt per xat (només últim prompt)
+last_prompt = ""
+
 @app.route("/")
 def index():
-    return "Servidor GPT-2 Mini actiu! Utilitza POST a /api/generate"
+    return "Servidor GPT-2 Mini funcionant!"
 
 @app.route("/api/generate", methods=["POST"])
 def generate():
+    global last_prompt
     data = request.get_json()
+
     if not data or "prompt" not in data:
-        return jsonify({"error": "No s'ha proporcionat 'prompt'"}), 400
-    
+        return jsonify({"error": "No s'ha proporcionat cap prompt"}), 400
+
     prompt = data["prompt"]
-    
-    # Generació del text
-    output = generator(
-        prompt,
-        max_length=MAX_LENGTH,
-        do_sample=True,
-        temperature=TEMPERATURE,
-        top_k=TOP_K,
-        top_p=TOP_P,
-        num_return_sequences=1
-    )
+    last_prompt = prompt  # opcional: guardar últim prompt
 
-    # Retornem només el text generat
-    return jsonify({"text": output[0]["generated_text"]})
+    # Tokenització
+    inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
-# --------------------------
-# ARRANCADA
-# --------------------------
+    # Generació de text
+    with torch.no_grad():
+        outputs = model.generate(
+            inputs,
+            max_length=MAX_LENGTH,
+            do_sample=True,
+            temperature=TEMPERATURE,
+            pad_token_id=tokenizer.eos_token_id
+        )
+
+    text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    return jsonify({"response": text})
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
