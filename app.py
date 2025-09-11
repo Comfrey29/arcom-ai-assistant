@@ -1,46 +1,43 @@
-from flask import Flask, request, jsonify
-import requests
 import os
-from dotenv import load_dotenv
+from flask import Flask, request, render_template
+from transformers import pipeline, set_seed
 
-load_dotenv()  # Carrega variables del .env
-
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-HF_MODEL = "gpt2"  # Pots canviar a qualsevol model de Hugging Face
-
-HEADERS = {
-    "Authorization": f"Bearer {HF_API_TOKEN}"
-}
-
+# Inicialització Flask
 app = Flask(__name__)
 
-@app.route("/generate", methods=["POST"])
-def generate():
-    data = request.get_json()
-    prompt = data.get("prompt", "")
-    max_length = data.get("max_length", 50)
+# Llegim variables d'entorn
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+HF_MODEL = os.getenv("HF_MODEL", "gpt2")  # Si no hi ha, agafa gpt2 per defecte
 
-    if not prompt:
-        return jsonify({"error": "No prompt provided"}), 400
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": max_length}
-    }
-
-    response = requests.post(
-        f"https://api-inference.huggingface.co/models/{HF_MODEL}",
-        headers=HEADERS,
-        json=payload
+# Inicialitzem el model Hugging Face amb token
+try:
+    generator = pipeline(
+        "text-generation",
+        model=HF_MODEL,
+        device=-1,  # CPU
+        use_auth_token=HF_API_TOKEN
     )
+except Exception as e:
+    print("[ERROR] No s'ha pogut carregar el model:", e)
+    generator = None
 
-    if response.status_code != 200:
-        return jsonify({"error": response.text}), response.status_code
-
-    result = response.json()
-    generated_text = result[0]["generated_text"] if isinstance(result, list) else str(result)
-    return jsonify({"generated_text": generated_text})
+@app.route("/", methods=["GET", "POST"])
+def index():
+    output = ""
+    if request.method == "POST":
+        prompt = request.form.get("prompt", "")
+        if generator:
+            try:
+                set_seed(42)  # opcional: per reproduïbilitat
+                result = generator(prompt, max_length=100, do_sample=True)
+                output = result[0]["generated_text"]
+            except Exception as e:
+                output = f"[ERROR] {e}"
+        else:
+            output = "[ERROR] Model no carregat"
+    return render_template("index.html", output=output)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
+    # Port 10000 per defecte, Render usarà PORT a l'entorn
+    port = int(os.getenv("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
