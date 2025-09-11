@@ -4,12 +4,12 @@ import torch
 
 app = Flask(__name__)
 
-# Carrega el model directament des de la carpeta local
-MODEL_PATH = "./models"
+# Model petit i lliure, compatible amb 512 MB RAM
+MODEL_NAME = "distilgpt2"
 
-print("🔄 Carregant model des de", MODEL_PATH)
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
+print("🔄 Carregant model des de HuggingFace:", MODEL_NAME)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 
 @app.route("/generate", methods=["POST"])
 def generate():
