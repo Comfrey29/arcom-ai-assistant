@@ -1,47 +1,60 @@
 import os
-from flask import Flask, request, jsonify, render_template
-from transformers import pipeline, set_seed
+from flask import Flask, request, jsonify, stream_with_context, Response
+import requests
 
 app = Flask(__name__)
 
 # Configuració Hugging Face
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-HF_MODEL = "gpt2"  # Pots posar qualsevol model de Hugging Face
+HF_MODEL = "gpt2"  # pots canviar a un model més petit si vols
 
-# Inicialitzem generator com a None; el carregarem sota demanda
-generator = None
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
 
-def load_model():
-    global generator
-    if generator is None:
-        generator = pipeline(
-            "text-generation",
-            model=HF_MODEL,
-            use_auth_token=HF_API_TOKEN,
-            device=-1  # CPU, important per tenir poca RAM
-        )
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        data = request.get_json()
-        prompt = data.get("prompt", "")
-        output = "[ERROR] Model no carregat"
+def query_hf(prompt, max_tokens=256, temperature=0.7, top_p=0.95):
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "return_full_text": False,
+        },
+        "options": {"wait_for_model": True},
+    }
+    response = requests.post(HF_API_URL, headers=HEADERS, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        if isinstance(data, list) and "generated_text" in data[0]:
+            return data[0]["generated_text"]
+        else:
+            return str(data)
+    else:
+        return f"[ERROR HF API] {response.status_code}: {response.text}"
 
-        if prompt:
-            try:
-                load_model()  # Carreguem el model només aquí
-                set_seed(42)
-                result = generator(prompt, max_length=100, do_sample=True)
-                output = result[0]["generated_text"]
-            except Exception as e:
-                output = f"[ERROR] {e}"
-        return jsonify({"output": output})
 
-    # GET: retornem la pàgina HTML
-    return render_template("index.html")
+@app.route("/api/generate/stream")
+def generate_stream():
+    prompt = request.args.get("prompt", "")
+    max_tokens = int(request.args.get("max_tokens", 256))
+    temperature = float(request.args.get("temperature", 0.7))
+    top_p = float(request.args.get("top_p", 0.95))
+
+    def generate():
+        # crida única a HF API per cada prompt
+        text = query_hf(prompt, max_tokens, temperature, top_p)
+        yield text
+
+    return Response(stream_with_context(generate()), mimetype="text/plain")
+
+
+@app.route("/")
+def home():
+    return app.send_static_file("index.html")
+
 
 if __name__ == "__main__":
-    # Port i host per Render
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
