@@ -2,3 +2,5 @@ flask==3.1.2
 gunicorn==23.0.0
 transformers==4.56.1
 torch==2.8.0 --extra-index-url https://download.pytorch.org/whl/cpu
+requests
+python-dotenv
