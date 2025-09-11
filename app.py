@@ -1,61 +1,36 @@
-import os
-import zipfile
-import requests
-from flask import Flask, render_template, request
+from flask import Flask, request, jsonify
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 
 app = Flask(__name__)
 
-# ID del fitxer gran a Google Drive
-FILE_ID = "1b935e39cf9893108bd2f4fb5317f48ae1c3ab5e"
-ZIP_DEST = "model.zip"
-MODEL_DIR = "model"
+# Carrega el model directament des de la carpeta local
+MODEL_PATH = "./models"
 
-def download_and_extract_large_file(file_id, destination):
-    URL = "https://drive.google.com/uc?export=download"
-    session = requests.Session()
-    response = session.get(URL, params={"id": file_id}, stream=True)
+print("🔄 Carregant model des de", MODEL_PATH)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
 
-    # Cerca la cookie de confirmació
-    confirm_token = None
-    for key, value in response.cookies.items():
-        if key.startswith("download_warning"):
-            confirm_token = value
-            break
+@app.route("/generate", methods=["POST"])
+def generate():
+    data = request.get_json()
+    prompt = data.get("prompt", "")
+    if not prompt:
+        return jsonify({"error": "Falta el prompt"}), 400
 
-    if confirm_token:
-        response = session.get(URL, params={"id": file_id, "confirm": confirm_token}, stream=True)
-
-    # Escriu el fitxer
-    with open(destination, "wb") as f:
-        for chunk in response.iter_content(32768):
-            if chunk:
-                f.write(chunk)
-
-    print("Descarregat! Comprovant fitxer...")
-    if os.path.getsize(destination) < 100:
-        raise ValueError("Fitxer massa petit, descàrrega fallida")
-
-    # Descomprimir
-    print("Descomprimit...")
-    with zipfile.ZipFile(destination, 'r') as zip_ref:
-        zip_ref.extractall(MODEL_DIR)
-    print("Model llest a", MODEL_DIR)
-
-# Comprova si ja està descarregat i descomprimit
-if not os.path.exists(MODEL_DIR):
-    print("Descarregant model del Drive...")
-    download_and_extract_large_file(FILE_ID, ZIP_DEST)
-
-@app.route("/")
-def index():
-    return "<h1>Model carregat i llest per usar!</h1>"
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    text = request.form.get("text")
-    # Aquí afegeix la lògica de predicció amb el teu model
-    return {"input": text, "prediction": "aquí la resposta del model"}
+    inputs = tokenizer(prompt, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_length=100,
+            num_return_sequences=1,
+            temperature=0.7,
+            do_sample=True
+        )
+    text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return jsonify({"response": text})
 
 if __name__ == "__main__":
+    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
