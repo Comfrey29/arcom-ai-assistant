@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini ChatGPT - GPT-2</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #chatbox { border: 1px solid #ccc; padding: 10px; width: 400px; height: 400px; overflow-y: auto; }
+        .user { color: blue; margin: 5px 0; }
+        .bot { color: green; margin: 5px 0; }
+        #input-area { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Mini ChatGPT (GPT-2)</h1>
+    <div id="chatbox"></div>
+    <div id="input-area">
+        <input type="text" id="message" placeholder="Escriu el teu missatge..." style="width: 300px;">
+        <button onclick="sendMessage()">Enviar</button>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
