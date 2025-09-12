@@ -1,23 +1,82 @@
 <!DOCTYPE html>
 <html lang="ca">
 <head>
-    <meta charset="UTF-8">
-    <title>Mini ChatGPT - GPT-2</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #chatbox { border: 1px solid #ccc; padding: 10px; width: 400px; height: 400px; overflow-y: auto; }
-        .user { color: blue; margin: 5px 0; }
-        .bot { color: green; margin: 5px 0; }
-        #input-area { margin-top: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>GPT-2 Mini Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .chat-container {
+      width: 400px;
+      height: 600px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .message {
+      margin: 5px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      max-width: 80%;
+      line-height: 1.4;
+    }
+    .user {
+      background: #007bff;
+      color: #fff;
+      align-self: flex-end;
+    }
+    .bot {
+      background: #e9ecef;
+      color: #000;
+      align-self: flex-start;
+    }
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ccc;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+    }
+    .chat-input button {
+      padding: 10px 15px;
+      border: none;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    .chat-input button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
-    <h1>Mini ChatGPT (GPT-2)</h1>
-    <div id="chatbox"></div>
-    <div id="input-area">
-        <input type="text" id="message" placeholder="Escriu el teu missatge..." style="width: 300px;">
-        <button onclick="sendMessage()">Enviar</button>
+  <div class="chat-container">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Escriu un missatge...">
+      <button id="sendBtn">Enviar</button>
     </div>
-    <script src="/static/script.js"></script>
+  </div>
+
+  <script src="/static/script.js"></script>
 </body>
 </html>
