@@ -7,7 +7,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # Configuració Hugging Face API
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")  # defineix-ho a Render com secret
-MODEL_NAME = "distilgpt2"  # GPT-2 reduït i suportat GPT-2 Mini (lleuger)
+MODEL_NAME = "sshleifer/tiny-gpt2"  # GPT-2 reduït i suportat GPT-2 Mini (lleuger)
 
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
 HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
