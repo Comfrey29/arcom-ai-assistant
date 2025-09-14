@@ -5,23 +5,24 @@ from flask import Flask, request, jsonify, render_template
 app = Flask(__name__)
 
 # ─────────────────────────────
-# Configuració OpenRouter.ai
+# Configuració OpenRouter.ai amb debug
 # ─────────────────────────────
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")  # defineix-ho a Render (Secret)
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")  # Ha de coincidir exactament amb Render
+print("Clau OpenRouter carregada?", bool(OPENROUTER_API_KEY))  # Això apareixerà als logs, ha de ser True!
+
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json"
 }
 
-# Emmagatzemem historial de converses (en memòria)
 conversations = {}
 
-# ─────────────────────────────
-# Funció auxiliar per cridar OpenRouter.ai GPT-3.5
-# ─────────────────────────────
 def query_openrouter(prompt):
     try:
+        if not OPENROUTER_API_KEY:
+            return "⚠️ La clau OPENROUTER_API_KEY no està configurada."
         payload = {
             "model": "gpt-3.5-turbo",
             "messages": [
@@ -44,9 +45,6 @@ def query_openrouter(prompt):
     except Exception as e:
         return f"⚠️ Error inesperat: {str(e)}"
 
-# ─────────────────────────────
-# Endpoint de xat
-# ─────────────────────────────
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
@@ -55,35 +53,20 @@ def chat():
         user_message = data.get("message", "").strip()
         if not user_message:
             return jsonify({"error": "Cal enviar un missatge"}), 400
-
-        # Recuperem historial
         history = conversations.get(user_id, [])
         history.append(f"Usuari: {user_message}")
-
-        # Construïm prompt
         prompt = "\n".join(history) + "\nAssistència:"
-
-        # Cridem OpenRouter.ai
         bot_reply = query_openrouter(prompt)
-
-        # Afegim resposta a historial
         history.append(f"Assistència: {bot_reply}")
-        conversations[user_id] = history[-10:]  # només últimes 10 interaccions
-
+        conversations[user_id] = history[-10:]
         return jsonify({"reply": bot_reply, "history": history})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ─────────────────────────────
-# UI bàsica (frontend estil ChatGPT)
-# ─────────────────────────────
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
 
-# ─────────────────────────────
-# Inici app
-# ─────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
