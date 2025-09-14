@@ -1,59 +1,127 @@
 <!DOCTYPE html>
-<html lang="ca">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <title>Mini ChatGPT</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #chat-box { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
-    .user { font-weight: bold; color: blue; }
-    .bot { font-weight: bold; color: green; }
-    #input-area { margin-top: 10px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: white;
+      color: black;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    body.tema-oscuro {
+      background-color: #121212;
+      color: #eeeeee;
+    }
+    #chat-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 300px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+      color: #000000;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    body.tema-oscuro #chat-box {
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-color: #444;
+    }
+    .usuario {
+      font-weight: bold;
+      color: #1565c0;
+    }
+    .asistencia {
+      font-weight: bold;
+      color: #2e7d32;
+    }
+    #input-area {
+      margin-top: 10px;
+    }
+    #discord-info {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #7289da;
+      color: white;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    #discord-info a {
+      color: #ffff99;
+      text-decoration: underline;
+    }
+    #tema-toggle {
+      margin-bottom: 10px;
+      display: block;
+    }
   </style>
 </head>
-<body>
-  <h2>💬 Mini ChatGPT (HF Proxy)</h2>
-  <div id="chat-box"></div>
-
-  <div id="input-area">
-    <input type="text" id="message" placeholder="Escriu un missatge..." size="40">
-    <button onclick="sendMessage()">Enviar</button>
+<body class="tema-{{ tema }}">
+  <h2>💬 Mini ChatGPT (Proxy OpenRouter)</h2>
+  
+  <div id="discord-info">
+    ¿Quieres ayuda rápida? Únete a nuestro servidor de Discord: 
+    <a href="https://discord.gg/kUEJZXdhGt" target="_blank">https://discord.gg/kUEJZXdhGt</a>
   </div>
-
+  
+  <label id="tema-toggle">
+    <input type="checkbox" id="toggleTema"> Tema oscuro
+  </label>
+  
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <input type="text" id="message" placeholder="Escribe un mensaje..." size="40" autocomplete="off" />
+    <button onclick="enviarMensaje()">Enviar</button>
+  </div>
+  
   <script>
     const chatBox = document.getElementById("chat-box");
-
-    function addMessage(sender, text) {
+    const toggleTema = document.getElementById("toggleTema");
+    
+    function agregarMensaje(remitente, texto) {
       const p = document.createElement("p");
-      p.innerHTML = `<span class="${sender}">${sender}:</span> ${text}`;
+      p.innerHTML = `<span class="${remitente}">${remitente}:</span> ${texto}`;
       chatBox.appendChild(p);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
-
-    async function sendMessage() {
+    
+    async function enviarMensaje() {
       const input = document.getElementById("message");
-      const message = input.value.trim();
-      if (!message) return;
-
-      addMessage("Usuari", message);
+      const mensaje = input.value.trim();
+      if (!mensaje) return;
+      agregarMensaje("usuario", mensaje);
       input.value = "";
-
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, user_id: "default" })
+          body: JSON.stringify({ message: mensaje, user_id: "predeterminado" })
         });
         const data = await res.json();
-        if (data.reply) {
-          addMessage("Assistència", data.reply);
+        if (data.respuesta) {
+          agregarMensaje("asistencia", data.respuesta);
         } else {
-          addMessage("Assistència", "⚠️ Error en la resposta.");
+          agregarMensaje("asistencia", "⚠️ Error en la respuesta.");
         }
       } catch (err) {
-        addMessage("Assistència", "⚠️ Error de connexió amb el servidor.");
+        agregarMensaje("asistencia", "⚠️ Error de conexión con el servidor.");
       }
     }
+    
+    // Inicializa estado toggle según tema actual
+    document.body.classList.contains("tema-oscuro") ? toggleTema.checked = true : toggleTema.checked = false;
+    
+    toggleTema.addEventListener("change", () => {
+      if(toggleTema.checked) {
+        document.body.classList.add("tema-oscuro");
+        window.history.replaceState(null, null, "?tema=oscuro");
+      } else {
+        document.body.classList.remove("tema-oscuro");
+        window.history.replaceState(null, null, "?tema=claro");
+      }
+    });
   </script>
 </body>
 </html>
