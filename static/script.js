@@ -20,18 +20,19 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         body: JSON.stringify({
           user_id: "default",
-          message: message
+          message: message,
+          user_type: "free"  // Aquí canvia "free" per "premium" si vols
         })
       });
-      const data = await response.json();
 
-      if (data.respuesta) {
-        appendMessage(data.respuesta, "bot");
+      const data = await response.json();
+      if (data.reply) {  // Canviat "respuesta" per "reply" segons backend
+        appendMessage(data.reply, "bot");
       } else {
-        appendMessage("⚠️ Error: no se recibió respuesta.", "bot");
+        appendMessage("⚠️ Error: no s'ha rebut resposta.", "bot");
       }
     } catch (error) {
-      appendMessage("⚠️ Error en la conexión con el servidor.", "bot");
+      appendMessage("⚠️ Error en la connexió amb el servidor.", "bot");
     }
 
     sendBtn.disabled = false;
@@ -46,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   sendBtn.addEventListener("click", sendMessage);
+
   userInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
       sendMessage();
