@@ -10,10 +10,37 @@
     .bot { font-weight: bold; color: green; }
     #input-area { margin-top: 10px; }
     #model-select { margin-bottom: 10px; }
+    #premium-message {
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      color: #856404;
+    }
+    #buy-premium {
+      background-color: #0070f3; 
+      color: white; 
+      border: none; 
+      padding: 8px 15px;
+      font-size: 1rem; 
+      cursor: pointer; 
+      border-radius: 5px; 
+      text-decoration: none;
+      margin-left: 10px;
+    }
+    #buy-premium:hover {
+      background-color: #005bb5;
+    }
   </style>
 </head>
 <body>
   <h2>💬 ArCom AI Assistant (HF Proxy)</h2>
+
+  <div id="premium-message">
+    Per a més funcions i respostes més potents, compra la versió <strong>Premium</strong>! 
+    <a id="buy-premium" href="https://www.paypal.com/qrcodes/managed/cc0080a0-1e15-4842-a1eb-0231739d08f6?utm_source=consweb_more" target="_blank" rel="noopener noreferrer">Comprar Premium amb PayPal</a>
+  </div>
 
   <!-- Selector de model (mode free o premium) -->
   <label for="model-select">Selecciona el model:</label>
@@ -23,7 +50,6 @@
   </select>
 
   <div id="chat-box"></div>
-  
   <div id="input-area">
     <input type="text" id="message" placeholder="Escriu un missatge..." size="40" />
     <button onclick="sendMessage()">Enviar</button>
@@ -31,26 +57,22 @@
 
   <script>
     const chatBox = document.getElementById("chat-box");
-
     function addMessage(sender, text) {
       const p = document.createElement("p");
       p.innerHTML = `<span class="${sender === 'Usuari' ? 'user' : 'bot'}">${sender}:</span> ${text}`;
       chatBox.appendChild(p);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
-
     async function sendMessage() {
       const input = document.getElementById("message");
       const message = input.value.trim();
       const modelSelect = document.getElementById("model-select");
       const userType = modelSelect.value; // 'free' o 'premium'
-
       if (!message) return;
       addMessage("Usuari", message);
       input.value = "";
       input.disabled = true;
       document.querySelector("button").disabled = true;
-
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -70,7 +92,6 @@
       } catch (err) {
         addMessage("Assistència", "⚠️ Error de connexió amb el servidor.");
       }
-
       input.disabled = false;
       document.querySelector("button").disabled = false;
       input.focus();
