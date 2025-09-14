@@ -23,15 +23,15 @@ document.addEventListener("DOMContentLoaded", () => {
           message: message
         })
       });
-
       const data = await response.json();
-      if (data.reply) {
-        appendMessage(data.reply, "bot");
+
+      if (data.respuesta) {
+        appendMessage(data.respuesta, "bot");
       } else {
-        appendMessage("⚠️ Error: no s'ha rebut cap resposta.", "bot");
+        appendMessage("⚠️ Error: no se recibió respuesta.", "bot");
       }
     } catch (error) {
-      appendMessage("⚠️ Error en la connexió amb el servidor.", "bot");
+      appendMessage("⚠️ Error en la conexión con el servidor.", "bot");
     }
 
     sendBtn.disabled = false;
