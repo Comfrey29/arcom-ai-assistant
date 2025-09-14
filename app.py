@@ -7,24 +7,23 @@ app = Flask(__name__)
 # ─────────────────────────────
 # Configuració OpenRouter.ai amb debug
 # ─────────────────────────────
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")  # Ha de coincidir exactament amb Render
-print("Clau OpenRouter carregada?", bool(OPENROUTER_API_KEY))  # Això apareixerà als logs, ha de ser True!
-
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+print("Clau OpenRouter carregada?", bool(OPENROUTER_API_KEY))
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json"
 }
 
+# Emmagatzematge converses per usuari (simple, en memòria)
 conversations = {}
 
-def query_openrouter(prompt):
+def query_openrouter(prompt, model):
     try:
         if not OPENROUTER_API_KEY:
             return "⚠️ La clau OPENROUTER_API_KEY no està configurada."
         payload = {
-            "model": "gpt-3.5-turbo",
+            "model": model,
             "messages": [
                 {"role": "user", "content": prompt}
             ],
@@ -51,15 +50,28 @@ def chat():
         data = request.json
         user_id = data.get("user_id", "default")
         user_message = data.get("message", "").strip()
+        user_type = data.get("user_type", "free")  # Per defecte 'free'
         if not user_message:
             return jsonify({"error": "Cal enviar un missatge"}), 400
+
+        # Tria model segons tipus d'usuari
+        if user_type == "premium":
+            model = "gpt-3.5-turbo"
+        else:
+            model = "deepseek-chat"
+
+        # Gestiona historial local per generar prompt contextual
         history = conversations.get(user_id, [])
         history.append(f"Usuari: {user_message}")
         prompt = "\n".join(history) + "\nAssistència:"
-        bot_reply = query_openrouter(prompt)
+
+        bot_reply = query_openrouter(prompt, model)
+
         history.append(f"Assistència: {bot_reply}")
-        conversations[user_id] = history[-10:]
+        conversations[user_id] = history[-10:]  # Manté últims 10 missatges
+
         return jsonify({"reply": bot_reply, "history": history})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
