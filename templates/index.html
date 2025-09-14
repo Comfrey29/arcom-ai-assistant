@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ca">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>ArCom AI Assistant</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
@@ -9,34 +9,57 @@
     .user { font-weight: bold; color: blue; }
     .bot { font-weight: bold; color: green; }
     #input-area { margin-top: 10px; }
+    #model-select { margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <h2>💬 ArCom AI Assistant(HF Proxy)</h2>
+  <h2>💬 ArCom AI Assistant (HF Proxy)</h2>
+
+  <!-- Selector de model (mode free o premium) -->
+  <label for="model-select">Selecciona el model:</label>
+  <select id="model-select">
+    <option value="free" selected>Free (DeepSeek Chat)</option>
+    <option value="premium">Premium (GPT-3.5 Turbo)</option>
+  </select>
+
   <div id="chat-box"></div>
+  
   <div id="input-area">
-    <input type="text" id="message" placeholder="Escrive un mensaje..." size="40">
+    <input type="text" id="message" placeholder="Escriu un missatge..." size="40" />
     <button onclick="sendMessage()">Enviar</button>
   </div>
+
   <script>
     const chatBox = document.getElementById("chat-box");
+
     function addMessage(sender, text) {
       const p = document.createElement("p");
-      p.innerHTML = `<span class="${sender}">${sender}:</span> ${text}`;
+      p.innerHTML = `<span class="${sender === 'Usuari' ? 'user' : 'bot'}">${sender}:</span> ${text}`;
       chatBox.appendChild(p);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
+
     async function sendMessage() {
       const input = document.getElementById("message");
       const message = input.value.trim();
+      const modelSelect = document.getElementById("model-select");
+      const userType = modelSelect.value; // 'free' o 'premium'
+
       if (!message) return;
       addMessage("Usuari", message);
       input.value = "";
+      input.disabled = true;
+      document.querySelector("button").disabled = true;
+
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, user_id: "default" })
+          body: JSON.stringify({
+            message: message,
+            user_id: "default",
+            user_type: userType
+          })
         });
         const data = await res.json();
         if (data.reply) {
@@ -47,6 +70,10 @@
       } catch (err) {
         addMessage("Assistència", "⚠️ Error de connexió amb el servidor.");
       }
+
+      input.disabled = false;
+      document.querySelector("button").disabled = false;
+      input.focus();
     }
   </script>
 </body>
