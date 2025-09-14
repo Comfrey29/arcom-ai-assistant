@@ -5,50 +5,44 @@ from flask import Flask, request, jsonify, render_template
 app = Flask(__name__)
 
 # ─────────────────────────────
-# Configuració
+# Configuració OpenRouter.ai
 # ─────────────────────────────
-HF_API_TOKEN = os.environ.get("HF_API_TOKEN")  # defineix-ho a Render (Secret)
-MODEL_NAME = os.environ.get("MODEL_NAME", "EleutherAI/gpt-neo-125M")
-
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
-HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")  # defineix-ho a Render (Secret)
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json"
+}
 
 # Emmagatzemem historial de converses (en memòria)
 conversations = {}
 
-
 # ─────────────────────────────
-# Funció auxiliar per cridar Hugging Face
+# Funció auxiliar per cridar OpenRouter.ai GPT-3.5
 # ─────────────────────────────
-def query_huggingface(prompt, max_new_tokens=80, temperature=0.7, top_p=0.9):
+def query_openrouter(prompt):
     try:
         payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": max_new_tokens,
-                "temperature": temperature,
-                "top_p": top_p,
-                "return_full_text": False
-            }
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "max_tokens": 80
         }
-        response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
-
-        if response.status_code == 404:
-            return "⚠️ El model no existeix o no està carregat a Hugging Face."
-
+        response = requests.post(OPENROUTER_API_URL, headers=HEADERS, json=payload, timeout=60)
+        if response.status_code == 401:
+            return "⚠️ Clau API no vàlida o no configurada."
         response.raise_for_status()
         data = response.json()
-
-        if isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
-            return data[0]["generated_text"].strip()
-
+        if "choices" in data and len(data["choices"]) > 0:
+            return data["choices"][0]["message"]["content"].strip()
         return "⚠️ No he pogut generar resposta, torna-ho a provar."
-
     except requests.exceptions.Timeout:
-        return "⚠️ Temps d'espera esgotat amb Hugging Face."
+        return "⚠️ Temps d'espera esgotat amb OpenRouter.ai."
     except Exception as e:
         return f"⚠️ Error inesperat: {str(e)}"
-
 
 # ─────────────────────────────
 # Endpoint de xat
@@ -59,7 +53,6 @@ def chat():
         data = request.json
         user_id = data.get("user_id", "default")
         user_message = data.get("message", "").strip()
-
         if not user_message:
             return jsonify({"error": "Cal enviar un missatge"}), 400
 
@@ -70,18 +63,16 @@ def chat():
         # Construïm prompt
         prompt = "\n".join(history) + "\nAssistència:"
 
-        # Cridem Hugging Face
-        bot_reply = query_huggingface(prompt)
+        # Cridem OpenRouter.ai
+        bot_reply = query_openrouter(prompt)
 
         # Afegim resposta a historial
         history.append(f"Assistència: {bot_reply}")
         conversations[user_id] = history[-10:]  # només últimes 10 interaccions
 
         return jsonify({"reply": bot_reply, "history": history})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # ─────────────────────────────
 # UI bàsica (frontend estil ChatGPT)
@@ -89,7 +80,6 @@ def chat():
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
-
 
 # ─────────────────────────────
 # Inici app
