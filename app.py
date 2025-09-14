@@ -9,7 +9,7 @@ app = Flask(__name__)
 # ─────────────────────────────
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 print("Clau OpenRouter carregada?", bool(OPENROUTER_API_KEY))
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_URL = "https://openrouter.ai/v1/chat/completions"  # sense /api
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json"
