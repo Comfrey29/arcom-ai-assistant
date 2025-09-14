@@ -50,28 +50,27 @@ def chat():
         data = request.json
         user_id = data.get("user_id", "default")
         user_message = data.get("message", "").strip()
-        user_type = data.get("user_type", "free")  # Per defecte 'free'
+        user_type = data.get("user_type", "free")
+        
         if not user_message:
             return jsonify({"error": "Cal enviar un missatge"}), 400
-
-        # Tria model segons tipus d'usuari
+        
+        # Models correctes segons disponibilitat OpenRouter
         if user_type == "premium":
-            model = "gpt-3.5-turbo"
+            model = "openai/gpt-3.5-turbo"  
         else:
-            model = "deepseek-chat"
-
-        # Gestiona historial local per generar prompt contextual
+            model = "openai/deepseek-chat"  
+        
         history = conversations.get(user_id, [])
         history.append(f"Usuari: {user_message}")
         prompt = "\n".join(history) + "\nAssistència:"
-
+        
         bot_reply = query_openrouter(prompt, model)
-
+        
         history.append(f"Assistència: {bot_reply}")
-        conversations[user_id] = history[-10:]  # Manté últims 10 missatges
-
+        conversations[user_id] = history[-10:]
+        
         return jsonify({"reply": bot_reply, "history": history})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
