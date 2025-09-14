@@ -1,93 +1,99 @@
 import os
-import zipfile
-from io import BytesIO
-from flask import Flask, jsonify, request
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
-import pickle
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
+import requests
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-MODEL_ID = "1USzqA-lmhhJtZuBdgaFjqYeMzMlO70IQ"
-MODEL_ZIP_PATH = "models/model.zip"
-MODEL_DIR = "models/distilgpt2"
+# ─────────────────────────────
+# Configuració
+# ─────────────────────────────
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")  # defineix-ho a Render (Secret)
+MODEL_NAME = os.environ.get("MODEL_NAME", "EleutherAI/gpt-neo-125M")
 
-creds = None
-model = None
-tokenizer = None
+API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-def get_drive_service():
-    global creds
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
-    return build('drive', 'v3', credentials=creds)
+# Emmagatzemem historial de converses (en memòria)
+conversations = {}
 
-def download_model_zip():
-    service = get_drive_service()
-    request_drive = service.files().get_media(fileId=MODEL_ID)
-    fh = BytesIO()
-    downloader = MediaIoBaseDownload(fh, request_drive)
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
-        if status:
-            print(f"Descàrrega: {int(status.progress() * 100)}%")
-    fh.seek(0)
-    os.makedirs(os.path.dirname(MODEL_ZIP_PATH), exist_ok=True)
-    with open(MODEL_ZIP_PATH, "wb") as f:
-        f.write(fh.read())
-    # Descomprimeix
-    with zipfile.ZipFile(MODEL_ZIP_PATH, 'r') as zip_ref:
-        zip_ref.extractall(MODEL_DIR)
 
-def load_model():
-    global model, tokenizer
-    if model is None or tokenizer is None:
-        model = AutoModelForCausalLM.from_pretrained(MODEL_DIR)
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-        model.eval()
-
-@app.route('/model/download', methods=['GET'])
-def model_download():
+# ─────────────────────────────
+# Funció auxiliar per cridar Hugging Face
+# ─────────────────────────────
+def query_huggingface(prompt, max_new_tokens=80, temperature=0.7, top_p=0.9):
     try:
-        download_model_zip()
-        return jsonify({"message": "Model descarregat i descomprès correctament"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        payload = {
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": max_new_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+                "return_full_text": False
+            }
+        }
+        response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
 
-@app.route('/model/infer', methods=['POST'])
-def model_infer():
+        if response.status_code == 404:
+            return "⚠️ El model no existeix o no està carregat a Hugging Face."
+
+        response.raise_for_status()
+        data = response.json()
+
+        if isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
+            return data[0]["generated_text"].strip()
+
+        return "⚠️ No he pogut generar resposta, torna-ho a provar."
+
+    except requests.exceptions.Timeout:
+        return "⚠️ Temps d'espera esgotat amb Hugging Face."
+    except Exception as e:
+        return f"⚠️ Error inesperat: {str(e)}"
+
+
+# ─────────────────────────────
+# Endpoint de xat
+# ─────────────────────────────
+@app.route("/api/chat", methods=["POST"])
+def chat():
     try:
         data = request.json
-        text_input = data.get('input', '')
-        if not text_input:
-            return jsonify({"error": "Cal enviar text d'entrada"}), 400
-        load_model()
-        inputs = tokenizer.encode(text_input, return_tensors='pt')
-        outputs = model.generate(inputs, max_length=50)
-        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return jsonify({"generated_text": result})
+        user_id = data.get("user_id", "default")
+        user_message = data.get("message", "").strip()
+
+        if not user_message:
+            return jsonify({"error": "Cal enviar un missatge"}), 400
+
+        # Recuperem historial
+        history = conversations.get(user_id, [])
+        history.append(f"Usuari: {user_message}")
+
+        # Construïm prompt
+        prompt = "\n".join(history) + "\nAssistència:"
+
+        # Cridem Hugging Face
+        bot_reply = query_huggingface(prompt)
+
+        # Afegim resposta a historial
+        history.append(f"Assistència: {bot_reply}")
+        conversations[user_id] = history[-10:]  # només últimes 10 interaccions
+
+        return jsonify({"reply": bot_reply, "history": history})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/')
-def index():
-    return "Servidor actiu"
 
-if __name__ == '__main__':
+# ─────────────────────────────
+# UI bàsica (frontend estil ChatGPT)
+# ─────────────────────────────
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
+
+
+# ─────────────────────────────
+# Inici app
+# ─────────────────────────────
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
