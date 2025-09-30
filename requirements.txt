@@ -8,3 +8,4 @@ google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
 Authlib==1.2.0
+flask-login
