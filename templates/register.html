@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registrar Usuari</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      margin: 0; padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+    .register-box {
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 2em 3em;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 1.5em;
+      font-weight: 700;
+      font-size: 2rem;
+      letter-spacing: 2px;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.8em;
+      margin: 0.6em 0 1.2em;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      outline: none;
+    }
+    input::placeholder {
+      color: #bbb;
+    }
+    button {
+      background: #8e2de2;
+      background: linear-gradient(to right, #4a00e0, #8e2de2);
+      border: none;
+      padding: 1em 2em;
+      border-radius: 25px;
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      width: 100%;
+    }
+    button:hover {
+      background: #4a00e0;
+    }
+    .footer-text {
+      margin-top: 1em;
+      font-size: 0.9rem;
+    }
+    .footer-text a {
+      color: #f9a825;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer-text a:hover {
+      text-decoration: underline;
+    }
+    ul.flashes {
+      margin: 0 0 1em 0;
+      padding: 0;
+      list-style: none;
+      color: #ff6f61;
+      font-weight: 600;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="register-box">
+    <h2>Registrar Usuari</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <ul class="flashes">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" autocomplete="off" action="{{ url_for('register') }}">
+      <input type="text" name="username" placeholder="Nom d'usuari" required>
+      <input type="password" name="password" placeholder="Contrasenya" required>
+      <button type="submit">Registrar</button>
+    </form>
+
+    <p class="footer-text">
+      Ja tens compte? <a href="{{ url_for('login') }}">Fes login</a>
+    </p>
+  </div>
+</body>
+</html>
