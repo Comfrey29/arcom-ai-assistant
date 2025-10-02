@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Activar Premium</title>
+</head>
+<body>
+  <h1>Activa tu cuenta Premium</h1>
+  <form method="POST" action="{{ url_for('premium_activate') }}">
+    <label for="key">Clave Premium:</label>
+    <input type="text" id="key" name="key" required />
+    <button type="submit">Activar</button>
+  </form>
+  <p><a href="{{ url_for('index') }}">Volver al inicio</a></p>
+  {% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+  {% endwith %}
+</body>
+</html>
