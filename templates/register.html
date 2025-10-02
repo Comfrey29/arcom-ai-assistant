@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Registrar Usuari</title>
+  <title>Register on ArCom</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -95,13 +95,13 @@
     {% endwith %}
 
     <form method="post" autocomplete="off" action="{{ url_for('register') }}">
-      <input type="text" name="username" placeholder="Nom d'usuari" required>
-      <input type="password" name="password" placeholder="Contrasenya" required>
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="password" name="password" placeholder="Password" required>
       <button type="submit">Registrar</button>
     </form>
 
     <p class="footer-text">
-      Ja tens compte? <a href="{{ url_for('login') }}">Fes login</a>
+      Do you have an account created? <a href="{{ url_for('login') }}">Go to Login</a>
     </p>
   </div>
 </body>
