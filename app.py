@@ -5,12 +5,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import (LoginManager, UserMixin, login_user,
                          logout_user, login_required, current_user)
 from werkzeug.security import generate_password_hash, check_password_hash
-import secrets
+
+# Configura ruta absoluta base
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -19,7 +21,6 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Models
-
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(120), unique=True, nullable=False)
@@ -180,8 +181,20 @@ def premium_activate():
 def index():
     return render_template('index.html', user=current_user)
 
+# Ruta per veure taules (debug)
+
+@app.route('/db-tables')
+def db_tables():
+    tables = db.engine.table_names()
+    return '<br>'.join(tables)
+
+# Creació taules fora de __main__ per funcionament amb Gunicorn
+
+print("Creant taules a la base de dades...")
+with app.app_context():
+    db.create_all()
+print("Taules creades")
+
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
