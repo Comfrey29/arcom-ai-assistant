@@ -29,7 +29,7 @@ HEADERS = {
 }
 
 MODEL_PREMIUM = "gpt-3.5-turbo"
-MODEL_FREE = "openrouter/deepseek/deepseek-chat"
+MODEL_FREE = "deepseek/deepseek-chat-v3-0324"
 
 def query_openrouter(messages, model):
     if not OPENROUTER_API_KEY:
