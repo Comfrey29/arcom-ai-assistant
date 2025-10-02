@@ -13,17 +13,7 @@ USERS_FILE = 'users.json'
 CONVERSATIONS_FILE = 'conversations.json'
 PREMIUM_KEYS_FILE = 'premium_keys.json'
 
-# OpenRouter API config
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-HEADERS = {
-    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-    "Content-Type": "application/json",
-    "HTTP-Referer": "http://localhost"
-}
-
-MODEL_PREMIUM = "gpt-3.5-turbo"
-MODEL_FREE = "deepseek/deepseek-chat-v3-0324"
+PREDEFINED_ADMINS = ['admin', 'Comfrey']
 
 def load_json(filename):
     if not os.path.exists(filename):
@@ -40,11 +30,14 @@ def generate_premium_key(length=30):
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def is_admin(username):
-    # Definició d'administradors simple
-    return username == "admin"
+    if username in PREDEFINED_ADMINS:
+        return True
+    users = load_json(USERS_FILE)
+    user = users.get(username)
+    return user.get('is_admin', False) if user else False
 
 def query_openrouter(messages, model):
-    if not OPENROUTER_API_KEY:
+    if not os.environ.get('OPENROUTER_API_KEY'):
         return "⚠️ API key OpenRouter no configurada"
     payload = {
         "model": model,
@@ -54,8 +47,14 @@ def query_openrouter(messages, model):
         "max_tokens": 150,
         "stream": False
     }
-    print("OpenRouter payload:", json.dumps(payload, indent=2))
-    response = requests.post(OPENROUTER_API_URL, headers=HEADERS, json=payload, timeout=30)
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost"
+        },
+        json=payload, timeout=30)
     if response.status_code != 200:
         return f"⚠️ Error OpenRouter: {response.status_code} - {response.text}"
     data = response.json()
@@ -193,6 +192,7 @@ def admin_keys():
         flash("No tens permisos d'administrador.")
         return redirect(url_for('login'))
     premium_keys = load_json(PREMIUM_KEYS_FILE)
+    users = load_json(USERS_FILE)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -212,31 +212,26 @@ def admin_keys():
             if key_to_revoke in premium_keys:
                 premium_keys[key_to_revoke]['used'] = True
                 flash(f"Clau revocada: {key_to_revoke}")
+        elif action == 'add_admin':
+            admin_user = request.form.get('admin_user', '').strip()
+            if admin_user in users:
+                users[admin_user]['is_admin'] = True
+                save_json(USERS_FILE, users)
+                flash(f"Usuari {admin_user} ara és administrador")
+            else:
+                flash("Usuari no trobat")
+        elif action == 'remove_admin':
+            admin_user = request.form.get('admin_user', '').strip()
+            if admin_user in users:
+                users[admin_user]['is_admin'] = False
+                save_json(USERS_FILE, users)
+                flash(f"Usuari {admin_user} ja no és administrador")
+            else:
+                flash("Usuari no trobat")
+
         save_json(PREMIUM_KEYS_FILE, premium_keys)
 
-    html = "<h1>Admin de claus Premium</h1>"
-    html += '''
-      <form method="POST">
-        <select name="period">
-          <option value="month">1 mes</option>
-          <option value="year">1 any</option>
-        </select>
-        <button name="action" value="add">Afegeix nova clau</button>
-      </form><br>
-    '''
-    html += "<table border='1'><tr><th>Clau</th><th>Usada</th><th>Usos restants</th><th>Caducitat</th><th>Acció</th></tr>"
-    for k, v in premium_keys.items():
-        html += f"<tr><td>{k}</td><td>{v['used']}</td><td>{v['uses_left']}</td><td>{v['expires_at']}</td><td>"
-        if not v['used']:
-            html += f'''
-            <form method="POST" style="display:inline">
-                <input type="hidden" name="key" value="{k}">
-                <button name="action" value="revoke">Revocar</button>
-            </form>
-            '''
-        html += "</td></tr>"
-    html += "</table>"
-    return html
+    return render_template('admin_keys.html', keys=premium_keys)
 
 @app.route('/')
 def index():
