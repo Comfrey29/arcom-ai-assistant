@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Administración de Claves Premium</title>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin de claves Premium</h1>
+
+  <form method="POST" action="{{ url_for('admin_keys') }}">
+    <label for="period">Periodo para la nueva clave:</label>
+    <select id="period" name="period">
+      <option value="month">1 mes</option>
+      <option value="year">1 año</option>
+    </select>
+    <button name="action" value="add" type="submit">Añadir nueva clave</button>
+  </form>
+
+  <br />
+
+  <table>
+    <thead>
+      <tr>
+        <th>Clave</th>
+        <th>Usada</th>
+        <th>Usos Restantes</th>
+        <th>Caducidad</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for key, data in keys.items() %}
+      <tr>
+        <td>{{ key }}</td>
+        <td>{{ data.used }}</td>
+        <td>{{ data.uses_left }}</td>
+        <td>{{ data.expires_at }}</td>
+        <td>
+          {% if not data.used %}
+          <form method="POST" style="display:inline" action="{{ url_for('admin_keys') }}">
+            <input type="hidden" name="key" value="{{ key }}" />
+            <button type="submit" name="action" value="revoke">Revocar</button>
+          </form>
+          {% else %}
+          -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+  {% endwith %}
+
+  <p><a href="{{ url_for('index') }}">Volver al inicio</a></p>
+</body>
+</html>
