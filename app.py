@@ -42,9 +42,10 @@ def query_openrouter(messages, model):
         "max_tokens": 150,
         "stream": False
     }
+    print("OpenRouter payload:", json.dumps(payload, indent=2))  # Debug log del payload
     response = requests.post(OPENROUTER_API_URL, headers=HEADERS, json=payload, timeout=30)
     if response.status_code != 200:
-        return f"⚠️ Error OpenRouter: {response.status_code}"
+        return f"⚠️ Error OpenRouter: {response.status_code} - {response.text}"
     data = response.json()
     if "choices" in data and len(data["choices"]) > 0:
         return data["choices"][0]["message"]["content"].strip()
@@ -62,7 +63,6 @@ def register():
         if username in users:
             flash('Aquest usuari ja existeix')
             return redirect(url_for('register'))
-        # Guarda password en pla (molt senzill, pot implementar hashing amb bcrypt)
         users[username] = {"password": password, "is_premium": False}
         save_json(USERS_FILE, users)
         flash('Registre completat! Ara pots iniciar sessió.')
@@ -98,7 +98,6 @@ def save_conversation(username, line):
     if username not in conversations:
         conversations[username] = []
     conversations[username].append(line)
-    # Manté només les últimes 20 línies per limitació
     conversations[username] = conversations[username][-20:]
     save_json(CONVERSATIONS_FILE, conversations)
 
@@ -139,8 +138,7 @@ def premium_activate():
         flash('Has de fer login per activar premium')
         return redirect(url_for('login'))
     key = request.form.get('key', '').strip()
-    # Aquí podries carregar, validar i marcar clau premium (ex: fitxer JSON, lògica simplificada)
-    # Per exemple, suposem que la clau "1234" habilita premium
+    # Suposem clau "1234" habilita premium
     if key == "1234":
         users = load_json(USERS_FILE)
         current_user = session['username']
@@ -162,4 +160,3 @@ def index():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
-
