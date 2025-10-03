@@ -82,7 +82,7 @@
 </head>
 <body>
   <div class="register-box">
-    <h2>Registrar Usuari</h2>
+    <h2>Register</h2>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -97,7 +97,7 @@
     <form method="post" autocomplete="off" action="{{ url_for('register') }}">
       <input type="text" name="username" placeholder="Username" required>
       <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Registrar</button>
+      <button type="submit">Register</button>
     </form>
 
     <p class="footer-text">
