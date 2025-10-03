@@ -9,6 +9,8 @@ google-auth-httplib2
 google-api-python-client
 Authlib==1.2.0
 flask-login
+Flask-Migrate
+psycopg2-binary
 flask-sqlalchemy
 Flask-Dance
 bcrypt
