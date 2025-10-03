@@ -14,6 +14,8 @@ CONVERSATIONS_FILE = 'conversations.json'
 PREMIUM_KEYS_FILE = 'premium_keys.json'
 
 PREDEFINED_ADMINS = ['admin', 'Comfrey']
+MODEL_PREMIUM = "gpt-3.5-turbo"
+MODEL_FREE = "deepseek/deepseek-chat-v3-0324" 
 
 def load_json(filename):
     if not os.path.exists(filename):
@@ -54,6 +56,7 @@ def query_openrouter(messages, model):
             "Content-Type": "application/json",
             "HTTP-Referer": "http://localhost"
         },
+
         json=payload, timeout=30)
     if response.status_code != 200:
         return f"⚠️ Error OpenRouter: {response.status_code} - {response.text}"
