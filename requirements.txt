@@ -11,4 +11,4 @@ Authlib==1.2.0
 flask-login
 flask-sqlalchemy
 Flask-Dance
-sqlite3
+
