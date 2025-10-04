@@ -7,13 +7,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import bcrypt
 import requests
-import psycopg2-binary
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
 
-# Configuració de la base de dades PostgreSQL (canvia la cadena de connexió segons el teu entorn)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://myappdb:5afr4mP2t2yhzSwhgXn4VyGr2PeCMeO7@dpg-d3fv7s56ubrc73chog3g-a.frankfurt-postgres.render.com/myapppostgres')
+# Configuració de la base de dades PostgreSQL externa mitjançant variable d'entorn
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -114,7 +113,6 @@ def logout():
     return redirect(url_for('login'))
 
 def get_conversations(username):
-    # Aquesta part la pots mantenir si no vols migrar
     import json, os
     CONVERSATIONS_FILE = 'conversations.json'
     if not os.path.exists(CONVERSATIONS_FILE):
