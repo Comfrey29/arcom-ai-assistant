@@ -7,6 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import bcrypt
 import requests
+import psycopg2-binary
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
