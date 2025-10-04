@@ -13,10 +13,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
 
 # Configuració base dades PostgreSQL mitjançant variable d'entorn
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+db.init_app(app)
 migrate = Migrate(app, db)
 
 def execute_sql_file(database_url, sql_filepath):
