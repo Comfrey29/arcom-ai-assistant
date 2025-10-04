@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS users (
+    username VARCHAR(80) PRIMARY KEY NOT NULL,
+    password BYTEA NOT NULL,
+    is_premium BOOLEAN DEFAULT FALSE,
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS premium_keys (
+    key VARCHAR(64) PRIMARY KEY NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    uses_left INTEGER DEFAULT 10,
+    expires_at TIMESTAMP NULL
+);
