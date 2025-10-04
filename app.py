@@ -7,16 +7,30 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import bcrypt
 import requests
+import psycopg2
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
 
-# Configuració de la base de dades PostgreSQL externa mitjançant variable d'entorn
+# Configuració base dades PostgreSQL mitjançant variable d'entorn
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+def execute_sql_file(database_url, sql_filepath):
+    conn = psycopg2.connect(database_url)
+    try:
+        with conn, conn.cursor() as cur:
+            with open(sql_filepath, "r", encoding="utf-8") as f:
+                sql_commands = f.read()
+            cur.execute(sql_commands)
+        print("Base de dades inicialitzada correctament.")
+    except Exception as e:
+        print(f"Error inicialitzant la base de dades: {e}")
+    finally:
+        conn.close()
 
 PREDEFINED_ADMINS = ['admin', 'Comfrey']
 MODEL_PREMIUM = "gpt-3.5-turbo"
@@ -25,7 +39,7 @@ MODEL_FREE = "deepseek/deepseek-chat-v3-0324"
 class User(db.Model):
     __tablename__ = 'users'
     username = db.Column(db.String(80), primary_key=True, nullable=False)
-    password = db.Column(db.LargeBinary, nullable=False)  # bcrypt hashed password
+    password = db.Column(db.LargeBinary, nullable=False)
     is_premium = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
@@ -257,6 +271,8 @@ def index():
         return redirect(url_for('login'))
     return render_template('index.html', user=session['username'])
 
+
 if __name__ == "__main__":
+    execute_sql_file(os.environ['DATABASE_URL'], "init_db.sql")
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
