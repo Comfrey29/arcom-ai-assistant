@@ -14,3 +14,4 @@ psycopg2-binary
 flask-sqlalchemy
 Flask-Dance
 bcrypt
+Flask-WTF
