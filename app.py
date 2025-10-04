@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
 
 # Configuració de la base de dades PostgreSQL (canvia la cadena de connexió segons el teu entorn)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://user:password@localhost:5432/mydatabase')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://myappdb:5afr4mP2t2yhzSwhgXn4VyGr2PeCMeO7@dpg-d3fv7s56ubrc73chog3g-a.frankfurt-postgres.render.com/myapppostgres')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
