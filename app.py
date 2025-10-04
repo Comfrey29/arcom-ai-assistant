@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 import bcrypt
 import requests
 import psycopg2
+from database import db
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
