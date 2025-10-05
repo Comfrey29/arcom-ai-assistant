@@ -38,12 +38,12 @@
   <h2>💬 ArCom AI Assistant (HF Proxy)</h2>
 
   <div id="premium-message">
-    Per a més funcions i respostes més potents, compra la versió <strong>Premium</strong>! 
+     For more features and more powerful responses, buy the version<strong>Premium</strong>! 
     <a id="buy-premium" href="https://www.paypal.com/qrcodes/managed/cc0080a0-1e15-4842-a1eb-0231739d08f6?utm_source=consweb_more" target="_blank" rel="noopener noreferrer">Comprar Premium amb PayPal</a>
   </div>
 
-  <!-- Selector de model (mode free o premium) -->
-  <label for="model-select">Selecciona el model:</label>
+  <!--  model (mode free o premium) -->
+  <label for="model-select">Select the model:</label>
   <select id="model-select">
     <option value="free" selected>Free (DeepSeek Chat)</option>
     <option value="premium">Premium (GPT-3.5 Turbo)</option>
@@ -67,9 +67,9 @@
       const input = document.getElementById("message");
       const message = input.value.trim();
       const modelSelect = document.getElementById("model-select");
-      const userType = modelSelect.value; // 'free' o 'premium'
+      const userType = modelSelect.value; // 'free' or 'premium'
       if (!message) return;
-      addMessage("Usuari", message);
+      addMessage("User", message);
       input.value = "";
       input.disabled = true;
       document.querySelector("button").disabled = true;
@@ -87,10 +87,10 @@
         if (data.reply) {
           addMessage("Assistència", data.reply);
         } else {
-          addMessage("Assistència", "⚠️ Error en la resposta.");
+          addMessage("Assistència", "⚠️ Error en la respuesta.");
         }
       } catch (err) {
-        addMessage("Assistència", "⚠️ Error de connexió amb el servidor.");
+        addMessage("Assistència", "⚠️ Error de connexion con el servidor.");
       }
       input.disabled = false;
       document.querySelector("button").disabled = false;
