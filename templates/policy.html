@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy - ArCom</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      margin: 0; padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+    .privacy-box {
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 2em 3em;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+      text-align: left;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+    h2 {
+      margin-bottom: 1em;
+      font-weight: 700;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+    p {
+      margin-bottom: 1em;
+      line-height: 1.5em;
+      font-size: 1rem;
+    }
+    ul {
+      margin-left: 1.5em;
+      margin-bottom: 1em;
+    }
+    a {
+      color: #f9a825;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    button {
+      background: linear-gradient(to right, #4a00e0, #8e2de2);
+      border: none;
+      padding: 0.8em 2em;
+      border-radius: 25px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      display: block;
+      margin: 1em auto 0 auto;
+    }
+    button:hover {
+      background: #4a00e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="privacy-box">
+    <h2>Privacy Policy</h2>
+
+    <p>ArCom values your privacy. This policy explains how we collect, use, and protect your information when using our services.</p>
+
+    <ul>
+      <li>We collect account information such as username and password for authentication purposes.</li>
+      <li>Usage data and conversation logs may be stored temporarily to improve the service.</li>
+      <li>Personal data will not be shared with third parties without your consent, except if required by law.</li>
+      <li>We use standard security measures (encryption, secure cookies, and hashed passwords) to protect your information.</li>
+      <li>We do not sell or monetize your personal data.</li>
+      <li>You can request account deletion by contacting the administrator.</li>
+      <li>We may update this policy from time to time; users will be notified via the platform.</li>
+    </ul>
+
+    <p>For more details, review our <a href="{{ url_for('terms') }}">Terms and Conditions</a>.</p>
+
+    <form action="{{ url_for('index') }}">
+      <button type="submit">I Understand and Accept</button>
+    </form>
+  </div>
+</body>
+</html>
