@@ -1,72 +1,157 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Administración de Claves Premium</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Keys - ArCom</title>
   <style>
-    table, th, td {
-      border: 1px solid black;
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      margin: 0; padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #fff;
+    }
+    .admin-box {
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 2em 3em;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 1em;
+      font-weight: 700;
+      font-size: 2rem;
+      letter-spacing: 2px;
+    }
+    input[type="text"], input[type="password"], select {
+      width: 100%;
+      padding: 0.8em;
+      margin: 0.6em 0 1.2em;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      outline: none;
+    }
+    button {
+      background: linear-gradient(to right, #4a00e0, #8e2de2);
+      border: none;
+      padding: 0.8em 2em;
+      border-radius: 25px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+    button:hover {
+      background: #4a00e0;
+    }
+    ul.flashes {
+      margin: 0 0 1em 0;
+      padding: 0;
+      list-style: none;
+      color: #ff6f61;
+      font-weight: 600;
+      text-align: left;
+    }
+    table {
+      width: 100%;
+      margin-bottom: 1.5em;
       border-collapse: collapse;
-      padding: 8px;
+    }
+    th, td {
+      padding: 0.5em;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+    }
+    th {
+      font-weight: 700;
     }
   </style>
 </head>
 <body>
-  <h1>Admin de claves Premium</h1>
+  <div class="admin-box">
+    <h2>Admin Keys & Users</h2>
 
-  <form method="POST" action="{{ url_for('admin_keys') }}">
-    <label for="period">Periodo para la nueva clave:</label>
-    <select id="period" name="period">
-      <option value="month">1 mes</option>
-      <option value="year">1 año</option>
-    </select>
-    <button name="action" value="add" type="submit">Añadir nueva clave</button>
-  </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <ul class="flashes">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endwith %}
 
-  <br />
-
-  <table>
-    <thead>
+    <h3>Premium Keys</h3>
+    <table>
       <tr>
-        <th>Clave</th>
-        <th>Usada</th>
-        <th>Usos Restantes</th>
-        <th>Caducidad</th>
-        <th>Acciones</th>
+        <th>Key</th>
+        <th>Used</th>
+        <th>Uses Left</th>
+        <th>Expires At</th>
       </tr>
-    </thead>
-    <tbody>
-      {% for key, data in keys.items() %}
+      {% for key in keys %}
       <tr>
-        <td>{{ key }}</td>
-        <td>{{ data.used }}</td>
-        <td>{{ data.uses_left }}</td>
-        <td>{{ data.expires_at }}</td>
-        <td>
-          {% if not data.used %}
-          <form method="POST" style="display:inline" action="{{ url_for('admin_keys') }}">
-            <input type="hidden" name="key" value="{{ key }}" />
-            <button type="submit" name="action" value="revoke">Revocar</button>
-          </form>
-          {% else %}
-          -
-          {% endif %}
-        </td>
+        <td>{{ key.key }}</td>
+        <td>{{ key.used }}</td>
+        <td>{{ key.uses_left }}</td>
+        <td>{{ key.expires_at if key.expires_at else 'Never' }}</td>
       </tr>
       {% endfor %}
-    </tbody>
-  </table>
+    </table>
 
-  {% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-  {% endwith %}
+    <h3>Users</h3>
+    <table>
+      <tr>
+        <th>Username</th>
+        <th>Admin</th>
+        <th>Premium</th>
+      </tr>
+      {% for user in users %}
+      <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ 'Yes' if user.is_admin else 'No' }}</td>
+        <td>{{ 'Yes' if user.is_premium else 'No' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
 
-  <p><a href="{{ url_for('index') }}">Volver al inicio</a></p>
+    <h3>Actions</h3>
+    <form method="post" action="{{ url_for('admin_keys') }}">
+      <input type="hidden" name="action" value="add">
+      <select name="period" required>
+        <option value="month">1 Month</option>
+        <option value="year">1 Year</option>
+      </select>
+      <button type="submit">Generate New Key</button>
+    </form>
+
+    <form method="post" action="{{ url_for('admin_keys') }}">
+      <input type="hidden" name="action" value="revoke">
+      <input type="text" name="key" placeholder="Key to Revoke" required>
+      <button type="submit">Revoke Key</button>
+    </form>
+
+    <form method="post" action="{{ url_for('admin_keys') }}">
+      <input type="hidden" name="action" value="add_admin">
+      <input type="text" name="admin_user" placeholder="Username to Make Admin" required>
+      <button type="submit">Add Admin</button>
+    </form>
+
+    <form method="post" action="{{ url_for('admin_keys') }}">
+      <input type="hidden" name="action" value="remove_admin">
+      <input type="text" name="admin_user" placeholder="Username to Remove Admin" required>
+      <button type="submit">Remove Admin</button>
+    </form>
+  </div>
 </body>
 </html>
