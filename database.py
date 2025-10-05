@@ -1,4 +1,6 @@
+# database.py
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -9,6 +11,15 @@ class User(db.Model):
     is_premium = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
+
+    # Camps nous per protecció contra bruteforce
+    failed_logins = db.Column(db.Integer, default=0, nullable=False)
+    last_failed = db.Column(db.DateTime, nullable=True)
+    locked_until = db.Column(db.DateTime, nullable=True)
+    banned = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f"<User {self.username}>"
 
 class PremiumKey(db.Model):
     __tablename__ = 'premium_keys'
