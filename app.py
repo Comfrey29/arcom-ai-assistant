@@ -1,43 +1,36 @@
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import os
 import secrets
 import string
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 import bcrypt
 import requests
-import psycopg2
-from database import db
+from database import db  # <-- aquest fitxer ha de contenir `db = SQLAlchemy()`
 
+# --- Configuració Flask ---
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'una_clau_molt_secreta_i_llarga'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'una_clau_molt_secreta_i_llarga')
 
-# Configuració base dades PostgreSQL mitjançant variable d'entorn
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
+# --- Configuració base de dades ---
+# Render proporciona DATABASE_URL automàticament si tens un servei PostgreSQL
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    raise RuntimeError("❌ La variable d'entorn DATABASE_URL no està configurada!")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 migrate = Migrate(app, db)
 
-def execute_sql_file(database_url, sql_filepath):
-    conn = psycopg2.connect(database_url)
-    try:
-        with conn, conn.cursor() as cur:
-            with open(sql_filepath, "r", encoding="utf-8") as f:
-                sql_commands = f.read()
-            cur.execute(sql_commands)
-        print("Base de dades inicialitzada correctament.")
-    except Exception as e:
-        print(f"Error inicialitzant la base de dades: {e}")
-    finally:
-        conn.close()
-
+# --- Constants ---
 PREDEFINED_ADMINS = ['admin', 'Comfrey']
 MODEL_PREMIUM = "gpt-3.5-turbo"
 MODEL_FREE = "deepseek/deepseek-chat-v3-0324"
 
+# --- Models ---
 class User(db.Model):
     __tablename__ = 'users'
     username = db.Column(db.String(80), primary_key=True, nullable=False)
@@ -53,6 +46,7 @@ class PremiumKey(db.Model):
     uses_left = db.Column(db.Integer, default=10)
     expires_at = db.Column(db.DateTime, nullable=True)
 
+# --- Funcions auxiliars ---
 def generate_premium_key(length=30):
     alphabet = string.ascii_letters + string.digits + "-_"
     return ''.join(secrets.choice(alphabet) for _ in range(length))
@@ -81,13 +75,22 @@ def query_openrouter(messages, model):
             "Content-Type": "application/json",
             "HTTP-Referer": "http://localhost"
         },
-        json=payload, timeout=30)
+        json=payload,
+        timeout=30
+    )
     if response.status_code != 200:
         return f"⚠️ Error OpenRouter: {response.status_code} - {response.text}"
     data = response.json()
     if "choices" in data and len(data["choices"]) > 0:
         return data["choices"][0]["message"]["content"].strip()
     return "⚠️ No he pogut generar resposta."
+
+# --- Rutes ---
+@app.route('/')
+def index():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('index.html', user=session['username'])
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -128,6 +131,7 @@ def logout():
     flash('Sessió tancada')
     return redirect(url_for('login'))
 
+# --- Converses guardades en fitxer JSON ---
 def get_conversations(username):
     import json, os
     CONVERSATIONS_FILE = 'conversations.json'
@@ -180,7 +184,7 @@ def chat():
 
     return jsonify({"reply": bot_reply})
 
-@app.route('/premium', methods=['GET'])
+@app.route('/premium')
 def premium():
     if 'username' not in session:
         flash('Has de fer login')
@@ -267,14 +271,9 @@ def admin_keys():
 
     return render_template('admin_keys.html', keys=keys, users=users)
 
-@app.route('/')
-def index():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('index.html', user=session['username'])
-
-
+# --- Arrencada ---
 if __name__ == "__main__":
-    execute_sql_file(os.environ['DATABASE_URL'], "init_db.sql")
     port = int(os.environ.get('PORT', 10000))
+    with app.app_context():
+        db.create_all()
     app.run(host='0.0.0.0', port=port, debug=True)
