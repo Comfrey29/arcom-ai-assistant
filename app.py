@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os
 import secrets
@@ -7,14 +6,14 @@ import string
 from datetime import datetime, timedelta
 import bcrypt
 import requests
-from database import db  # <-- aquest fitxer ha de contenir `db = SQLAlchemy()`
+
+from database import db, User, PremiumKey  # Importa models des de database.py
 
 # --- Configuració Flask ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'una_clau_molt_secreta_i_llarga')
 
 # --- Configuració base de dades ---
-# Render proporciona DATABASE_URL automàticament si tens un servei PostgreSQL
 database_url = os.environ.get('DATABASE_URL')
 if not database_url:
     raise RuntimeError("❌ La variable d'entorn DATABASE_URL no està configurada!")
@@ -25,26 +24,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# Crear taules si no existeixen
+with app.app_context():
+    db.create_all()
+
 # --- Constants ---
 PREDEFINED_ADMINS = ['admin', 'Comfrey']
 MODEL_PREMIUM = "gpt-3.5-turbo"
 MODEL_FREE = "deepseek/deepseek-chat-v3-0324"
-
-# --- Models ---
-class User(db.Model):
-    __tablename__ = 'users'
-    username = db.Column(db.String(80), primary_key=True, nullable=False)
-    password = db.Column(db.LargeBinary, nullable=False)
-    is_premium = db.Column(db.Boolean, default=False)
-    is_admin = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True)
-
-class PremiumKey(db.Model):
-    __tablename__ = 'premium_keys'
-    key = db.Column(db.String(64), primary_key=True, nullable=False)
-    used = db.Column(db.Boolean, default=False)
-    uses_left = db.Column(db.Integer, default=10)
-    expires_at = db.Column(db.DateTime, nullable=True)
 
 # --- Funcions auxiliars ---
 def generate_premium_key(length=30):
@@ -84,6 +71,28 @@ def query_openrouter(messages, model):
     if "choices" in data and len(data["choices"]) > 0:
         return data["choices"][0]["message"]["content"].strip()
     return "⚠️ No he pogut generar resposta."
+
+# --- Gestió converses ---
+def get_conversations(username):
+    import json, os
+    CONVERSATIONS_FILE = 'conversations.json'
+    if not os.path.exists(CONVERSATIONS_FILE):
+        return []
+    with open(CONVERSATIONS_FILE) as f:
+        conversations = json.load(f)
+    return conversations.get(username, [])
+
+def save_conversation(username, line):
+    import json, os
+    CONVERSATIONS_FILE = 'conversations.json'
+    conversations = {}
+    if os.path.exists(CONVERSATIONS_FILE):
+        with open(CONVERSATIONS_FILE) as f:
+            conversations = json.load(f)
+    conversations.setdefault(username, []).append(line)
+    conversations[username] = conversations[username][-20:]
+    with open(CONVERSATIONS_FILE, 'w') as f:
+        json.dump(conversations, f, indent=4)
 
 # --- Rutes ---
 @app.route('/')
@@ -131,28 +140,6 @@ def logout():
     flash('Sessió tancada')
     return redirect(url_for('login'))
 
-# --- Converses guardades en fitxer JSON ---
-def get_conversations(username):
-    import json, os
-    CONVERSATIONS_FILE = 'conversations.json'
-    if not os.path.exists(CONVERSATIONS_FILE):
-        return []
-    with open(CONVERSATIONS_FILE) as f:
-        conversations = json.load(f)
-    return conversations.get(username, [])
-
-def save_conversation(username, line):
-    import json, os
-    CONVERSATIONS_FILE = 'conversations.json'
-    conversations = {}
-    if os.path.exists(CONVERSATIONS_FILE):
-        with open(CONVERSATIONS_FILE) as f:
-            conversations = json.load(f)
-    conversations.setdefault(username, []).append(line)
-    conversations[username] = conversations[username][-20:]
-    with open(CONVERSATIONS_FILE, 'w') as f:
-        json.dump(conversations, f, indent=4)
-
 @app.route('/api/chat', methods=['POST'])
 def chat():
     if 'username' not in session:
@@ -167,9 +154,8 @@ def chat():
     if model not in [MODEL_PREMIUM, MODEL_FREE]:
         model = MODEL_PREMIUM if user and user.is_premium else MODEL_FREE
 
-    history = get_conversations(current_user)
+    history = get_conversations(current_user)[-20:]
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
-    history = history[-20:]
     for line in history:
         if line.startswith("Usuari: "):
             messages.append({"role": "user", "content": line[len("Usuari: "):]})
@@ -203,11 +189,9 @@ def premium_activate():
     if not premium_key:
         flash('Clau no vàlida')
         return redirect(url_for('premium'))
-
     if premium_key.used:
         flash('Clau ja utilitzada')
         return redirect(url_for('premium'))
-
     if premium_key.expires_at and now > premium_key.expires_at:
         flash('Clau caducada')
         return redirect(url_for('premium'))
@@ -215,8 +199,7 @@ def premium_activate():
     premium_key.used = True
     db.session.commit()
 
-    current_user = session['username']
-    user = User.query.filter_by(username=current_user).first()
+    user = User.query.filter_by(username=session['username']).first()
     if user:
         user.is_premium = True
         db.session.commit()
@@ -229,6 +212,7 @@ def admin_keys():
     if 'username' not in session or not is_admin(session['username']):
         flash("No tens permisos d'administrador.")
         return redirect(url_for('login'))
+
     keys = PremiumKey.query.all()
     users = User.query.all()
 
@@ -274,6 +258,4 @@ def admin_keys():
 # --- Arrencada ---
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 10000))
-    with app.app_context():
-        db.create_all()
     app.run(host='0.0.0.0', port=port, debug=True)
